@@ -1,5 +1,5 @@
 import { app } from './app'
-import config from './configs/index'
+import config from './config/index'
 import { errorLog, log } from './utils/logger'
 const startServer = async () => {
   try {

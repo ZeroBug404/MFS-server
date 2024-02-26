@@ -1,5 +1,5 @@
 import { ErrorRequestHandler } from 'express'
-import configs from '../configs'
+import configs from '../config'
 import { IErrorSources } from '../interfaces/error'
 import { ApiError } from './ApiErrors'
 import handleCastError from './handleCastError'

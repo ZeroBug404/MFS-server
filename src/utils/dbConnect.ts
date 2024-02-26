@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import config from '../configs/index'
+import config from '../config/index'
 import { errorLog, log } from './logger'
 const dbConnect = async (): Promise<void> => {
   try {
