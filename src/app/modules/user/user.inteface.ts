@@ -4,6 +4,7 @@ export type IUser = {
   role: string
   phoneNo: string
   password: string
+  email: string;
 }
 
 export type UserModel = {
