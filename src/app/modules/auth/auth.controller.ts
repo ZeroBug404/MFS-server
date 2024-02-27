@@ -1,13 +1,30 @@
 import { Request, Response } from 'express';
-import config from '../../../config';
-import catchAsync from '../../../shared/catchAsync';
-import sendResponse from '../../../shared/sendResponse';
+
 import { ILoginUserResponse, IRefreshTokenResponse } from './auth.interface';
 import { AuthService } from './auth.service';
+import config from '../../../config';
+import sendResponse from '../../../utils/responseHandler';
+import catchAsync from '../../../shared/catchAsync';
+import httpStatus from 'http-status';
+
+const insertIntoDB = catchAsync(async (req: Request, res: Response) => {
+  // console.log(req.body, 'req.body');
+  
+  const result = await AuthService.insertIntoDB(req.body);
+  
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'User created successfully',
+    data: result,
+  });
+});
 
 const loginUser = catchAsync(async (req: Request, res: Response) => {
   const { ...loginData } = req.body;
   const result = await AuthService.loginUser(loginData);
+  // console.log(result, 'result');
+  
   const { refreshToken } = result;
   // set refresh token into cookie
   const cookieOptions = {
@@ -46,21 +63,9 @@ const refreshToken = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const changePassword = catchAsync(async (req: Request, res: Response) => {
-  const user = req.user;
-  const { ...passwordData } = req.body;
-
-  await AuthService.changePassword(user, passwordData);
-
-  sendResponse(res, {
-    statusCode: 200,
-    success: true,
-    message: 'Password changed successfully !',
-  });
-});
 
 export const AuthController = {
+  insertIntoDB,
   loginUser,
   refreshToken,
-  changePassword,
 };
