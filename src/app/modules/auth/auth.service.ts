@@ -118,12 +118,12 @@ const refreshToken = async (token: string): Promise<IRefreshTokenResponse> => {
     throw new ApiError(httpStatus.FORBIDDEN, 'Invalid Refresh Token')
   }
 
-  const { userId } = verifiedToken
+  const { phoneNo } = verifiedToken
 
   // tumi delete hye gso  kintu tumar refresh token ase
   // checking deleted user's refresh token
 
-  const isUserExist = await User.isUserExist(userId)
+  const isUserExist = await User.isUserExist(phoneNo)
   if (!isUserExist) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User does not exist')
   }
