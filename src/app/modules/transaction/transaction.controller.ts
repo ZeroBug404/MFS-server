@@ -7,7 +7,7 @@ import { TransactionService } from './transaction.service'
 import { Transaction } from './transaction.model'
 
 const sendMoney = catchAsync(async (req: Request, res: Response) => {
-  // console.log(req.body, 'req.body');
+  console.log(req.body, 'req.body')
 
   const result = await TransactionService.sendMoney(
     req.body.senderId,
@@ -40,6 +40,23 @@ const cashIn = catchAsync(async (req: Request, res: Response) => {
   })
 })
 
+const agentCashIn = catchAsync(async (req: Request, res: Response) => {
+  // console.log(req.body, 'req.body');
+
+  const result = await TransactionService.agentCashIn(
+    req.body.adminId,
+    req.body.recipientPhone,
+    req.body.amount
+  )
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Cash-in successfully',
+    data: result,
+  })
+})
+
 const cashOut = catchAsync(async (req: Request, res: Response) => {
   // console.log(req.body, 'req.body');
 
@@ -48,6 +65,8 @@ const cashOut = catchAsync(async (req: Request, res: Response) => {
     req.body.agentPhone,
     req.body.amount
   )
+
+  console.log(result, 'result')
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -58,7 +77,9 @@ const cashOut = catchAsync(async (req: Request, res: Response) => {
 })
 
 const getHistory = async (req: Request, res: Response) => {
-  const transactions = await TransactionService.getTransactions(req.body._id)
+  console.log(req.query)
+
+  const transactions = await TransactionService.getTransactions(req.query)
 
   sendResponse(res, {
     statusCode: httpStatus.OK,
@@ -78,6 +99,7 @@ const adminGetTransactions = async (req: Request, res: Response) => {
 export const TransactionController = {
   sendMoney,
   cashIn,
+  agentCashIn,
   cashOut,
   getHistory,
   adminGetTransactions,

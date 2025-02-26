@@ -14,20 +14,13 @@ const approveAgent = async (agentId: string) => {
   return agent
 }
 
-const getBalance = async (data: { userId: any; role: any }) => {
-  // console.log(data);
-  
+const getBalance = async (data: any) => {
   const user = await User.findById(data.userId).select('balance income')
-
-  // console.log(user);
-  
 
   if (data.role === 'admin') {
     const totalSystemBalance = await User.aggregate([
       { $group: { _id: null, total: { $sum: '$balance' } } },
     ])
-
-    // console.log(totalSystemBalance[0]);    
 
     return totalSystemBalance[0]
   }
@@ -49,6 +42,12 @@ const getAllUsers = async (search?: string) => {
 }
 
 const blockUser = async (userId: string) => {
+  const alreadyIsBlocked = await User.findById(userId).select('isActive')
+
+  if (alreadyIsBlocked?.isActive === false) {
+    return User.findByIdAndUpdate(userId, { isActive: true }, { new: true })
+  }
+
   return User.findByIdAndUpdate(userId, { isActive: false }, { new: true })
 }
 

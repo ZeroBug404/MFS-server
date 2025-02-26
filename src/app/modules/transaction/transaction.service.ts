@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { User } from '../user/user.model'
 import { Transaction } from '../transaction/transaction.model'
 import mongoose from 'mongoose'
@@ -97,6 +98,44 @@ const cashIn = async (agentId: string, userPhone: string, amount: number) => {
   }
 }
 
+const agentCashIn = async (
+  adminId: string,
+  userPhone: string,
+  amount: number
+) => {
+  const session = await mongoose.startSession()
+  session.startTransaction()
+
+  try {
+    const user = await User.findOne({ phoneNo: userPhone }).session(session)
+
+    if (!user) throw new Error('Invalid agent or user')
+
+    user.balance += amount
+
+    // Create transaction
+    const transaction = new Transaction({
+      from: adminId,
+      to: user._id,
+      amount,
+      fee: 0,
+      adminEarnings: 0,
+      type: 'cash-in',
+      transactionId: uuidv4(),
+    })
+
+    await Promise.all([user.save(), transaction.save()])
+
+    await session.commitTransaction()
+    return transaction
+  } catch (error) {
+    await session.abortTransaction()
+    throw error
+  } finally {
+    session.endSession()
+  }
+}
+
 const cashOut = async (userId: string, agentPhone: string, amount: number) => {
   const session = await mongoose.startSession()
   session.startTransaction()
@@ -104,13 +143,15 @@ const cashOut = async (userId: string, agentPhone: string, amount: number) => {
   try {
     const user = await User.findById(userId).session(session)
 
-    console.log(agentPhone);
-    
+    // console.log(agentPhone, userId, amount);
+
     const agent = await User.findOne({
       phoneNo: agentPhone,
       role: 'agent',
-      isApproved: true
+      isApproved: true,
     }).session(session)
+
+    console.log(agent, 'agent')
 
     if (!user || !agent) throw new Error('Invalid user or agent')
 
@@ -157,7 +198,9 @@ const cashOut = async (userId: string, agentPhone: string, amount: number) => {
   }
 }
 
-const getTransactions = async (userId: string, limit = 100) => {
+const getTransactions = async (data: any, limit = 100) => {
+  const userId = data.userId
+
   return Transaction.find({
     $or: [{ from: userId }, { to: userId }],
   })
@@ -169,6 +212,7 @@ const getTransactions = async (userId: string, limit = 100) => {
 export const TransactionService = {
   sendMoney,
   cashIn,
+  agentCashIn,
   cashOut,
   getTransactions,
 }

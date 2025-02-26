@@ -57,7 +57,7 @@ const blockUser = async (req: Request, res: Response) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'User blocked successfully',
+    message: 'Status changed successfully',
     data: user,
   })
 }

@@ -43,7 +43,7 @@ const loginUser = async (payload: ILoginUser): Promise<ILoginUserResponse> => {
 
   const isUserExist = await User.isUserExist(phoneNo)
 
-  console.log('isUserExist', isUserExist)
+  // console.log('isUserExist', isUserExist)
 
   if (!isUserExist) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User does not exist')
@@ -51,12 +51,12 @@ const loginUser = async (payload: ILoginUser): Promise<ILoginUserResponse> => {
 
   // console.log('isUserExist', isUserExist)
 
-  const passMatched = await User.isPasswordMatched(pin, isUserExist.pin)
+  // const passMatched = await User.isPasswordMatched(pin, isUserExist.pin)
 
-  console.log('passMatched', passMatched)
+  // console.log('passMatched', passMatched)
 
-  console.log('isUserExist.pin', isUserExist.pin)
-  console.log('pin', pin)
+  // console.log('isUserExist.pin', isUserExist.pin)
+  // console.log('pin', pin)
 
   if (
     isUserExist.pin &&
@@ -67,7 +67,6 @@ const loginUser = async (payload: ILoginUser): Promise<ILoginUserResponse> => {
 
   console.log('isUserExist', isUserExist);
   
-
   //create access token & refresh token
   const { phoneNo: contactNo, role } = isUserExist
   const accessToken = jwtHelpers.createToken(
