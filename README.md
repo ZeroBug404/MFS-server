@@ -16,7 +16,7 @@ Wallet Waves is a secured service to transfer your money.
 ## Live Links
 
 - **Backend API**: [https://mfs-server-eosin.vercel.app/](https://mfs-server-eosin.vercel.app/)
-- **Frontend App**: [https://wallet-waves.vercel.app](https://wallet-waves.vercel.app/login)
+- **Frontend App**: [https://wallet-waves.vercel.app](https://wallet-waves.vercel.app)
 
 ---
 
