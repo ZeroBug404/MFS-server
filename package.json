@@ -13,8 +13,7 @@
     "prettier": "prettier --write \"src/**/*.ts\"",
     "format": "yarn prettier && yarn lint:fix",
     "pre": "git pull && yarn && yarn dev",
-    "build": "rm -rf dist && yarn tsc",
-    "tsc": "tsc"
+    "build": "tsc"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

@@ -9,7 +9,15 @@ import globalErrorHandler from './errors/globalErrorHandler'
 import { dbConnect } from './utils/dbConnect'
 const app: Application = express()
 
-app.use(cors())
+
+const corsOptions = {
+  origin: [
+    "http://localhost:8080",
+  ],
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
 
 // Set EJS as the view engine
 app.set('view engine', 'ejs')
@@ -29,7 +37,9 @@ app.use('/api/v1', routes)
 
 //Welcome route
 app.get('/', async (req: Request, res: Response, next: NextFunction) => {
-  res.render('welcome')
+  res.json({
+    message: 'Welcome to the wallet waves',
+  })
 })
 
 // Error handling
