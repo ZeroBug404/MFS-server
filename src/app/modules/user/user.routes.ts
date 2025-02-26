@@ -7,11 +7,9 @@ const router = express.Router()
 
 router.get('/balance', auth(ENUM_USER_ROLE.ADMIN), UserController.getBalance)
 
-router.get('/manage', UserController.manageUsers)
-router.patch('/admin/:id/block', UserController.blockUser)
+router.get('/manage', auth(ENUM_USER_ROLE.ADMIN), UserController.manageUsers)
 
 // Admin Routes
-// router.get('/admin/users', UserController.getAllUsers);
 router.patch(
   '/admin/agents/:id/approve',
   auth(ENUM_USER_ROLE.ADMIN),
@@ -23,6 +21,5 @@ router.patch(
   auth(ENUM_USER_ROLE.ADMIN),
   UserController.blockUser
 )
-
 
 export const UserRoutes = router

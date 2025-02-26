@@ -9,14 +9,12 @@ const router = express.Router()
 router.post('/send', auth(ENUM_USER_ROLE.USER), TransactionController.sendMoney)
 
 router.post(
-  "/cash-in",
+  '/cash-in',
+  auth(ENUM_USER_ROLE.AGENT),
   TransactionController.cashIn
-);
+)
 
-router.post(
-  "/agent-cash-in",
-  TransactionController.agentCashIn
-);
+router.post('/agent-cash-in', TransactionController.agentCashIn)
 
 router.post(
   '/cash-out',
@@ -24,13 +22,7 @@ router.post(
   TransactionController.cashOut
 )
 
-router.get(
-  '/',
-  // auth(ENUM_USER_ROLE.USER),
-  // auth(ENUM_USER_ROLE.ADMIN),
-  // auth(ENUM_USER_ROLE.AGENT),
-  TransactionController.getHistory
-)
+router.get('/', TransactionController.getHistory)
 
 // Admin
 router.get(
