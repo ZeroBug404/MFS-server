@@ -20,13 +20,17 @@ const approveAgent = async (req: Request, res: Response) => {
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'User created successfully',
+    message: 'User approved successfully',
     data: result,
   })
 }
 
 const getBalance = async (req: Request, res: Response) => {
-  const balance = await UserService.getBalance(req.body)
+  console.log(req.query);  
+   
+  const balance = await UserService.getBalance(req.query)
+
+  console.log(balance);
 
   sendResponse(res, {
     statusCode: httpStatus.OK,

@@ -5,13 +5,7 @@ import { ENUM_USER_ROLE } from '../../../enums/user'
 
 const router = express.Router()
 
-router.get(
-  '/balance',
-  auth(ENUM_USER_ROLE.USER),
-  auth(ENUM_USER_ROLE.ADMIN),
-  auth(ENUM_USER_ROLE.AGENT),
-  UserController.getBalance
-)
+router.get('/balance', auth(ENUM_USER_ROLE.ADMIN), UserController.getBalance)
 
 router.get('/manage', UserController.manageUsers)
 router.patch('/admin/:id/block', UserController.blockUser)
@@ -23,5 +17,12 @@ router.patch(
   auth(ENUM_USER_ROLE.ADMIN),
   UserController.approveAgent
 )
+
+router.patch(
+  '/admin/:id/block',
+  auth(ENUM_USER_ROLE.ADMIN),
+  UserController.blockUser
+)
+
 
 export const UserRoutes = router

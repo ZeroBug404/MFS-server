@@ -15,12 +15,19 @@ const approveAgent = async (agentId: string) => {
 }
 
 const getBalance = async (data: { userId: any; role: any }) => {
+  // console.log(data);
+  
   const user = await User.findById(data.userId).select('balance income')
+
+  // console.log(user);
+  
 
   if (data.role === 'admin') {
     const totalSystemBalance = await User.aggregate([
       { $group: { _id: null, total: { $sum: '$balance' } } },
     ])
+
+    // console.log(totalSystemBalance[0]);    
 
     return totalSystemBalance[0]
   }

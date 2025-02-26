@@ -23,7 +23,6 @@ const register = catchAsync(async (req: Request, res: Response) => {
 const loginUser = catchAsync(async (req: Request, res: Response) => {
   const { ...loginData } = req.body;
   const result = await AuthService.loginUser(loginData);
-  // console.log(result, 'result');
   
   const { refreshToken } = result;
   // set refresh token into cookie
