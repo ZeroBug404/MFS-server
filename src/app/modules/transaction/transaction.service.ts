@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { User } from '../user/user.model'
-import { Transaction } from '../transaction/transaction.model'
 import mongoose from 'mongoose'
 import { v4 as uuidv4 } from 'uuid'
+import { Transaction } from '../transaction/transaction.model'
+import { User } from '../user/user.model'
 
 const sendMoney = async (
   senderId: string,
@@ -201,12 +201,16 @@ const cashOut = async (userId: string, agentPhone: string, amount: number) => {
 const getTransactions = async (data: any, limit = 100) => {
   const userId = data.userId
 
+  if (!userId) {
+    return []
+  }
+
   return Transaction.find({
     $or: [{ from: userId }, { to: userId }],
   })
     .sort({ createdAt: -1 })
     .limit(limit)
-    .populate('from to', 'name mobile')
+    .populate('from to', 'name phoneNo role')
 }
 
 export const TransactionService = {

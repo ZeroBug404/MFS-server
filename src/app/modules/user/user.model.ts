@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
-import { Schema, model } from 'mongoose'
-import { IUser, UserModel } from './user.inteface'
 import bcrypt from 'bcrypt'
+import { Schema, model } from 'mongoose'
 import config from '../../../config'
+import { IUser, UserModel } from './user.inteface'
 
 const UserSchema = new Schema<IUser, UserModel>(
   {
@@ -65,10 +65,7 @@ UserSchema.statics.isUserExist = async function (
   phoneNo: string,
   pin: string
 ): Promise<Pick<IUser, 'phoneNo' | 'pin' | 'role'> | null> {
-  return await User.findOne(
-    { phoneNo },
-    { phoneNo: 1, pin: 1, role: 1 }
-  )
+  return await User.findOne({ phoneNo }, { phoneNo: 1, pin: 1, role: 1 })
 }
 
 UserSchema.statics.isPasswordMatched = async function (
@@ -80,9 +77,11 @@ UserSchema.statics.isPasswordMatched = async function (
 
 // User.create() / user.save()
 UserSchema.pre('save', async function (next) {
-  // hashing user password
+  // hashing user password only if it's modified
   const user = this
-  user.pin = await bcrypt.hash(user.pin, Number(config.bcrypt_salt_rounds))
+  if (user.isModified('pin')) {
+    user.pin = await bcrypt.hash(user.pin, Number(config.bcrypt_salt_rounds))
+  }
   next()
 })
 

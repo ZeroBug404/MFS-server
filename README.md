@@ -24,8 +24,8 @@ Wallet Waves is a secured service to transfer your money.
 
 For testing purposes, you can use the following credentials:
 
-- **Admin Email**: `01907000474`
-- **Admin Password**: `54321`
+- **Admin Phone**: `01779968369`
+- **Admin Password**: `12345`
 
 ---
 

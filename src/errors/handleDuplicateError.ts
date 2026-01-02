@@ -1,28 +1,38 @@
-// /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
-// import { IErrorSources, IGenericErrorResponse } from '../interfaces/error'
+import { IErrorSources, IGenericErrorResponse } from '../interfaces/error'
 
-// const handleDuplicateError = (err: any): IGenericErrorResponse => {
-//   // Extract value within double quotes using regex
-//   const match = err.message.match(/"([^"]*)"/)
+const handleDuplicateError = (err: any): IGenericErrorResponse => {
+  // Extract field name and value from error message
+  const match = err.message.match(/"([^"]*)"/)
+  const extractedValue = match && match[1]
 
-//   // The extracted value will be in the first capturing group
-//   const extractedMessage = match && match[1]
+  // Extract field name from error keyPattern
+  const fieldName = err.keyPattern ? Object.keys(err.keyPattern)[0] : 'field'
 
-//   const errorSources: IErrorSources = [
-//     {
-//       path: '',
-//       message: `${extractedMessage} is already exists`,
-//     },
-//   ]
+  // Create user-friendly field names
+  const fieldDisplayNames: Record<string, string> = {
+    phoneNo: 'Phone number',
+    email: 'Email address',
+    nid: 'National ID (NID)',
+  }
 
-//   const statusCode = 400
+  const displayName = fieldDisplayNames[fieldName] || fieldName
 
-//   return {
-//     statusCode,
-//     message: 'Invalid ID',
-//     errorSources,
-//   }
-// }
+  const errorSources: IErrorSources = [
+    {
+      path: fieldName,
+      message: `${displayName} "${extractedValue}" is already registered. Please use a different ${displayName.toLowerCase()}.`,
+    },
+  ]
 
-// export default handleDuplicateError
+  const statusCode = 409
+
+  return {
+    statusCode,
+    message: `${displayName} already exists`,
+    errorSources,
+  }
+}
+
+export default handleDuplicateError

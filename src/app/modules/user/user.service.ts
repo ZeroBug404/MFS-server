@@ -1,3 +1,5 @@
+import httpStatus from 'http-status'
+import { ApiError } from '../../../errors/ApiErrors'
 import { User } from './user.model'
 
 const getPendingAgents = async () => {
@@ -51,10 +53,57 @@ const blockUser = async (userId: string) => {
   return User.findByIdAndUpdate(userId, { isActive: false }, { new: true })
 }
 
+const getMyProfile = async (phoneNo: string) => {
+  const user = await User.findOne({ phoneNo }).select('-pin')
+  if (!user) throw new ApiError(httpStatus.NOT_FOUND, 'User not found')
+  return user
+}
+
+const updateMyProfile = async (
+  phoneNo: string,
+  data: { name?: string; email?: string }
+) => {
+  const updateData: any = {}
+  if (data.name) updateData.name = data.name
+  if (data.email) updateData.email = data.email
+
+  if (Object.keys(updateData).length === 0) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'No fields to update')
+  }
+
+  const user = await User.findOneAndUpdate({ phoneNo }, updateData, {
+    new: true,
+    runValidators: true,
+  }).select('-pin')
+
+  if (!user) throw new ApiError(httpStatus.NOT_FOUND, 'User not found')
+  return user
+}
+
+const changePin = async (phoneNo: string, oldPin: string, newPin: string) => {
+  const user = await User.findOne({ phoneNo })
+  if (!user) throw new ApiError(httpStatus.NOT_FOUND, 'User not found')
+
+  // Verify old PIN
+  const isPinMatched = await User.isPasswordMatched(oldPin, user.pin)
+  if (!isPinMatched) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Current PIN is incorrect')
+  }
+
+  // Update to new PIN
+  user.pin = newPin
+  await user.save()
+
+  return { success: true }
+}
+
 export const UserService = {
   getPendingAgents,
   approveAgent,
   getBalance,
   getAllUsers,
   blockUser,
+  getMyProfile,
+  updateMyProfile,
+  changePin,
 }

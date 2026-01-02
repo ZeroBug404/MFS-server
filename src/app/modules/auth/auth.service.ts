@@ -5,20 +5,33 @@ import config from '../../../config'
 import { ApiError } from '../../../errors/ApiErrors'
 import { jwtHelpers } from '../../../helper/jwtHelper'
 
+import { User } from '../user/user.model'
 import {
   ILoginUser,
   ILoginUserResponse,
   IRefreshTokenResponse,
 } from './auth.interface'
-import { User } from '../user/user.model'
 
 const register = async (data: any) => {
   if (data.role === 'user') data.balance = 40
   if (data.role === 'agent') data.balance = 100000
 
-  // console.log(data)
-
   const result = await User.create(data)
+
+  // Validate JWT configuration before creating tokens
+  if (!config.jwt.secret || !config.jwt.refresh_secret) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'JWT configuration is missing. Please check your environment variables.'
+    )
+  }
+
+  if (!config.jwt.expires_in || !config.jwt.refresh_expires_in) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'JWT expiration configuration is missing. Please check your environment variables.'
+    )
+  }
 
   const accessToken = jwtHelpers.createToken(
     { contactNo: data.phoneNo, role: data.role },
@@ -41,32 +54,43 @@ const register = async (data: any) => {
 const loginUser = async (payload: ILoginUser): Promise<ILoginUserResponse> => {
   const { phoneNo, pin } = payload
 
-  const isUserExist = await User.isUserExist(phoneNo)
-
-  // console.log('isUserExist', isUserExist)
+  const isUserExist = await User.findOne({ phoneNo }).select(
+    'phoneNo pin role isActive'
+  )
 
   if (!isUserExist) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User does not exist')
   }
 
-  // console.log('isUserExist', isUserExist)
-
-  // const passMatched = await User.isPasswordMatched(pin, isUserExist.pin)
-
-  // console.log('passMatched', passMatched)
-
-  // console.log('isUserExist.pin', isUserExist.pin)
-  // console.log('pin', pin)
+  if (isUserExist.isActive === false) {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      'Your account has been blocked. Please contact support.'
+    )
+  }
 
   if (
     isUserExist.pin &&
     !(await User.isPasswordMatched(pin, isUserExist.pin))
   ) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Pin is incorrect')
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'PIN is incorrect')
   }
 
-  console.log('isUserExist', isUserExist);
-  
+  // Validate JWT configuration before creating tokens
+  if (!config.jwt.secret || !config.jwt.refresh_secret) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'JWT configuration is missing. Please check your environment variables.'
+    )
+  }
+
+  if (!config.jwt.expires_in || !config.jwt.refresh_expires_in) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      'JWT expiration configuration is missing. Please check your environment variables.'
+    )
+  }
+
   //create access token & refresh token
   const { phoneNo: contactNo, role } = isUserExist
   const accessToken = jwtHelpers.createToken(
