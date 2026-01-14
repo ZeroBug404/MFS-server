@@ -16,9 +16,9 @@ exports.TransactionService = void 0;
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 const mongoose_1 = __importDefault(require("mongoose"));
 const uuid_1 = require("uuid");
+const email_service_1 = require("../../../services/email.service");
 const transaction_model_1 = require("../transaction/transaction.model");
 const user_model_1 = require("../user/user.model");
-const email_service_1 = require("../../../services/email.service");
 const sendMoney = (senderId, recipientPhone, amount) => __awaiter(void 0, void 0, void 0, function* () {
     const session = yield mongoose_1.default.startSession();
     session.startTransaction();
@@ -53,6 +53,7 @@ const sendMoney = (senderId, recipientPhone, amount) => __awaiter(void 0, void 0
         yield session.commitTransaction();
         // Send email notifications (don't block if email fails)
         try {
+            const currentDate = new Date().toLocaleString();
             // Email to sender
             yield email_service_1.EmailService.sendTransactionEmail(sender.email, sender.name, {
                 type: 'send',
@@ -61,7 +62,7 @@ const sendMoney = (senderId, recipientPhone, amount) => __awaiter(void 0, void 0
                 fee,
                 newBalance: updatedSender.balance,
                 transactionId: transaction.transactionId,
-                date: transaction.createdAt.toLocaleString(),
+                date: currentDate,
             });
             // Email to recipient
             yield email_service_1.EmailService.sendTransactionEmail(recipient.email, recipient.name, {
@@ -70,7 +71,7 @@ const sendMoney = (senderId, recipientPhone, amount) => __awaiter(void 0, void 0
                 senderName: sender.name,
                 newBalance: updatedRecipient.balance,
                 transactionId: transaction.transactionId,
-                date: transaction.createdAt.toLocaleString(),
+                date: currentDate,
             });
         }
         catch (error) {

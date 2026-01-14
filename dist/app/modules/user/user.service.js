@@ -15,8 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserService = void 0;
 const http_status_1 = __importDefault(require("http-status"));
 const ApiErrors_1 = require("../../../errors/ApiErrors");
-const user_model_1 = require("./user.model");
 const email_service_1 = require("../../../services/email.service");
+const user_model_1 = require("./user.model");
 const getPendingAgents = () => __awaiter(void 0, void 0, void 0, function* () {
     return user_model_1.User.find({ role: 'agent', isApproved: false });
 });

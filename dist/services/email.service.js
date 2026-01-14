@@ -17,7 +17,7 @@ const nodemailer_1 = __importDefault(require("nodemailer"));
 const config_1 = __importDefault(require("../config"));
 // Create reusable transporter
 const createTransporter = () => {
-    return nodemailer_1.default.createTransporter({
+    return nodemailer_1.default.createTransport({
         host: config_1.default.email.host,
         port: Number(config_1.default.email.port),
         secure: config_1.default.email.secure === 'true',
@@ -140,8 +140,7 @@ const sendAgentApprovalEmail = (email, name) => __awaiter(void 0, void 0, void 0
 // Transaction notification
 const sendTransactionEmail = (email, name, transactionDetails) => __awaiter(void 0, void 0, void 0, function* () {
     const subject = `Transaction ${transactionDetails.type} - AmarCash`;
-    const isDebit = transactionDetails.type === 'send' ||
-        transactionDetails.type === 'cash-out';
+    const isDebit = transactionDetails.type === 'send' || transactionDetails.type === 'cash-out';
     const html = `
     <!DOCTYPE html>
     <html>

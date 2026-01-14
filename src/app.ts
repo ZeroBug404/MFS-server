@@ -9,17 +9,45 @@ import globalErrorHandler from './errors/globalErrorHandler'
 import { dbConnect } from './utils/dbConnect'
 const app: Application = express()
 
-
 const corsOptions = {
   origin: [
-    "http://localhost:8080",
-    "https://wallet-waves.vercel.app",
-    "https://amar-cash.vercel.app"
+    'http://localhost:8080',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://wallet-waves.vercel.app',
+    'https://amar-cash.vercel.app',
   ],
+  credentials: true,
   optionsSuccessStatus: 200,
-};
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+}
 
-app.use(cors(corsOptions));
+app.use(cors(corsOptions))
+
+// Additional CORS headers for Vercel
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const origin = req.headers.origin
+  if (origin && corsOptions.origin.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true')
+  res.setHeader(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+  )
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, X-Requested-With'
+  )
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200)
+  } else {
+    next()
+  }
+})
 
 // Set EJS as the view engine
 app.set('view engine', 'ejs')
