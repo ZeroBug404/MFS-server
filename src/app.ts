@@ -38,7 +38,7 @@ app.use('/api/v1', routes)
 //Welcome route
 app.get('/', async (req: Request, res: Response, next: NextFunction) => {
   res.json({
-    message: 'Welcome to the wallet waves',
+    message: 'Welcome to AmarCash',
   })
 })
 

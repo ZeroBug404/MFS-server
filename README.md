@@ -1,6 +1,6 @@
-# Wallet Waves
+# AmarCash
 
-Wallet Waves is a secured service to transfer your money.
+AmarCash is a secured service to transfer your money.
 
 ---
 

@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const config_1 = __importDefault(require("../config"));
 const ApiErrors_1 = require("./ApiErrors");
 const handleCastError_1 = __importDefault(require("./handleCastError"));
-// import handleDuplicateError from './handleDuplicateError'
+const handleDuplicateError_1 = __importDefault(require("./handleDuplicateError"));
 const handlevadiationErrors_1 = __importDefault(require("./handlevadiationErrors"));
 const globalErrorHandler = (err, req, res, next) => {
     if (config_1.default.env === 'development')
@@ -32,12 +32,12 @@ const globalErrorHandler = (err, req, res, next) => {
         message = simplifiedError === null || simplifiedError === void 0 ? void 0 : simplifiedError.message;
         errorSources = simplifiedError === null || simplifiedError === void 0 ? void 0 : simplifiedError.errorSources;
     }
-    // else if (err?.code === 11000) {
-    //   const simplifiedError = handleDuplicateError(err)
-    //   statusCode = simplifiedError?.statusCode
-    //   message = simplifiedError?.message
-    //   errorSources = simplifiedError?.errorSources
-    // }
+    else if ((err === null || err === void 0 ? void 0 : err.code) === 11000) {
+        const simplifiedError = (0, handleDuplicateError_1.default)(err);
+        statusCode = simplifiedError === null || simplifiedError === void 0 ? void 0 : simplifiedError.statusCode;
+        message = simplifiedError === null || simplifiedError === void 0 ? void 0 : simplifiedError.message;
+        errorSources = simplifiedError === null || simplifiedError === void 0 ? void 0 : simplifiedError.errorSources;
+    }
     else if (err instanceof ApiErrors_1.ApiError) {
         statusCode = err === null || err === void 0 ? void 0 : err.statusCode;
         message = err.message;

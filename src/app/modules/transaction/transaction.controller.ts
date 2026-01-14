@@ -1,10 +1,11 @@
 import { Request, Response } from 'express'
 
-import sendResponse from '../../../utils/responseHandler'
-import catchAsync from '../../../shared/catchAsync'
 import httpStatus from 'http-status'
-import { TransactionService } from './transaction.service'
+import catchAsync from '../../../shared/catchAsync'
+import sendResponse from '../../../utils/responseHandler'
 import { Transaction } from './transaction.model'
+import { TransactionService } from './transaction.service'
+import { TransactionStatisticsService } from './transaction.statistics.service'
 
 const sendMoney = catchAsync(async (req: Request, res: Response) => {
   console.log(req.body, 'req.body')
@@ -96,6 +97,41 @@ const adminGetTransactions = async (req: Request, res: Response) => {
   res.json({ success: true, data: transactions })
 }
 
+const getDashboardStats = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req.user as any)?.userId || (req.query.userId as string)
+  const role = (req.user as any)?.role || (req.query.role as string)
+
+  let stats
+
+  if (role === 'admin') {
+    stats = await TransactionStatisticsService.getAdminDashboardStats()
+  } else if (role === 'agent') {
+    stats = await TransactionStatisticsService.getAgentDashboardStats(userId)
+  } else {
+    stats = await TransactionStatisticsService.getUserDashboardStats(userId)
+  }
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'Dashboard statistics retrieved successfully',
+    data: stats,
+  })
+})
+
+const getSystemMetrics = catchAsync(async (req: Request, res: Response) => {
+  const timeRange = (req.query.timeRange as string) || '7d'
+
+  const metrics = await TransactionStatisticsService.getSystemMetrics(timeRange)
+
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: 'System metrics retrieved successfully',
+    data: metrics,
+  })
+})
+
 export const TransactionController = {
   sendMoney,
   cashIn,
@@ -103,4 +139,6 @@ export const TransactionController = {
   cashOut,
   getHistory,
   adminGetTransactions,
+  getDashboardStats,
+  getSystemMetrics,
 }

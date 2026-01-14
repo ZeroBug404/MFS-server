@@ -14,10 +14,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TransactionService = void 0;
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-const user_model_1 = require("../user/user.model");
-const transaction_model_1 = require("../transaction/transaction.model");
 const mongoose_1 = __importDefault(require("mongoose"));
 const uuid_1 = require("uuid");
+const transaction_model_1 = require("../transaction/transaction.model");
+const user_model_1 = require("../user/user.model");
+const email_service_1 = require("../../../services/email.service");
 const sendMoney = (senderId, recipientPhone, amount) => __awaiter(void 0, void 0, void 0, function* () {
     const session = yield mongoose_1.default.startSession();
     session.startTransaction();
@@ -29,12 +30,10 @@ const sendMoney = (senderId, recipientPhone, amount) => __awaiter(void 0, void 0
             throw new Error('Minimum amount is 50 Taka');
         const fee = amount > 100 ? 5 : 0;
         const totalDeduct = amount + fee;
-        // Update balances
-        sender.balance -= totalDeduct;
-        recipient.balance += amount;
         // Update admin earnings
         const admin = yield user_model_1.User.findOne({ role: 'admin' }).session(session);
-        admin.balance += fee;
+        if (!admin)
+            throw new Error('Admin not found');
         // Create transaction
         const transaction = new transaction_model_1.Transaction({
             from: senderId,
@@ -45,13 +44,38 @@ const sendMoney = (senderId, recipientPhone, amount) => __awaiter(void 0, void 0
             type: 'send',
             transactionId: (0, uuid_1.v4)(),
         });
-        yield Promise.all([
-            sender.save(),
-            recipient.save(),
-            admin.save(),
-            transaction.save(),
+        const [updatedSender, updatedRecipient] = yield Promise.all([
+            user_model_1.User.findByIdAndUpdate(senderId, { $inc: { balance: -totalDeduct } }, { session, new: true }),
+            user_model_1.User.findByIdAndUpdate(recipient._id, { $inc: { balance: amount } }, { session, new: true }),
+            user_model_1.User.findByIdAndUpdate(admin._id, { $inc: { balance: fee } }, { session, new: true }),
+            transaction.save({ session }),
         ]);
         yield session.commitTransaction();
+        // Send email notifications (don't block if email fails)
+        try {
+            // Email to sender
+            yield email_service_1.EmailService.sendTransactionEmail(sender.email, sender.name, {
+                type: 'send',
+                amount,
+                recipientName: recipient.name,
+                fee,
+                newBalance: updatedSender.balance,
+                transactionId: transaction.transactionId,
+                date: transaction.createdAt.toLocaleString(),
+            });
+            // Email to recipient
+            yield email_service_1.EmailService.sendTransactionEmail(recipient.email, recipient.name, {
+                type: 'receive',
+                amount,
+                senderName: sender.name,
+                newBalance: updatedRecipient.balance,
+                transactionId: transaction.transactionId,
+                date: transaction.createdAt.toLocaleString(),
+            });
+        }
+        catch (error) {
+            console.error('Failed to send transaction emails:', error);
+        }
         return transaction;
     }
     catch (error) {
@@ -72,9 +96,6 @@ const cashIn = (agentId, userPhone, amount) => __awaiter(void 0, void 0, void 0,
             throw new Error('Invalid agent or user');
         if (agent.balance < amount)
             throw new Error('Agent insufficient balance');
-        // Update balances
-        agent.balance -= amount;
-        user.balance += amount;
         // Create transaction
         const transaction = new transaction_model_1.Transaction({
             from: agentId,
@@ -85,7 +106,11 @@ const cashIn = (agentId, userPhone, amount) => __awaiter(void 0, void 0, void 0,
             type: 'cash-in',
             transactionId: (0, uuid_1.v4)(),
         });
-        yield Promise.all([agent.save(), user.save(), transaction.save()]);
+        yield Promise.all([
+            user_model_1.User.findByIdAndUpdate(agentId, { $inc: { balance: -amount } }, { session, new: true }),
+            user_model_1.User.findByIdAndUpdate(user._id, { $inc: { balance: amount } }, { session, new: true }),
+            transaction.save({ session }),
+        ]);
         yield session.commitTransaction();
         return transaction;
     }
@@ -104,7 +129,6 @@ const agentCashIn = (adminId, userPhone, amount) => __awaiter(void 0, void 0, vo
         const user = yield user_model_1.User.findOne({ phoneNo: userPhone }).session(session);
         if (!user)
             throw new Error('Invalid agent or user');
-        user.balance += amount;
         // Create transaction
         const transaction = new transaction_model_1.Transaction({
             from: adminId,
@@ -115,7 +139,10 @@ const agentCashIn = (adminId, userPhone, amount) => __awaiter(void 0, void 0, vo
             type: 'cash-in',
             transactionId: (0, uuid_1.v4)(),
         });
-        yield Promise.all([user.save(), transaction.save()]);
+        yield Promise.all([
+            user_model_1.User.findByIdAndUpdate(user._id, { $inc: { balance: amount } }, { session, new: true }),
+            transaction.save({ session }),
+        ]);
         yield session.commitTransaction();
         return transaction;
     }
@@ -145,30 +172,28 @@ const cashOut = (userId, agentPhone, amount) => __awaiter(void 0, void 0, void 0
         const totalDeduct = amount + fee;
         if (user.balance < totalDeduct)
             throw new Error('Insufficient balance');
-        // Update balances
-        user.balance -= totalDeduct;
-        agent.balance += amount - amount * 0.01; // Agent keeps 99%
-        agent.income = (agent.income || 0) + amount * 0.01; // Agent earns 1%
         // Update admin
         const admin = yield user_model_1.User.findOne({ role: 'admin' }).session(session);
         if (!admin)
             throw new Error('Admin not found');
-        admin.balance += amount * 0.005 + 5; // 0.5% + fixed 5 Taka
+        const agentAmount = amount - amount * 0.01; // Agent keeps 99%
+        const agentIncome = amount * 0.01; // Agent earns 1%
+        const adminEarnings = amount * 0.005 + 5; // 0.5% + fixed 5 Taka
         // Create transaction
         const transaction = new transaction_model_1.Transaction({
             from: userId,
             to: agent._id,
             amount,
             fee,
-            adminEarnings: amount * 0.005 + 5,
+            adminEarnings,
             type: 'cash-out',
             transactionId: (0, uuid_1.v4)(),
         });
         yield Promise.all([
-            user.save(),
-            agent.save(),
-            admin.save(),
-            transaction.save(),
+            user_model_1.User.findByIdAndUpdate(userId, { $inc: { balance: -totalDeduct } }, { session, new: true }),
+            user_model_1.User.findByIdAndUpdate(agent._id, { $inc: { balance: agentAmount, income: agentIncome } }, { session, new: true }),
+            user_model_1.User.findByIdAndUpdate(admin._id, { $inc: { balance: adminEarnings } }, { session, new: true }),
+            transaction.save({ session }),
         ]);
         yield session.commitTransaction();
         return transaction;
@@ -183,12 +208,15 @@ const cashOut = (userId, agentPhone, amount) => __awaiter(void 0, void 0, void 0
 });
 const getTransactions = (data, limit = 100) => __awaiter(void 0, void 0, void 0, function* () {
     const userId = data.userId;
+    if (!userId) {
+        return [];
+    }
     return transaction_model_1.Transaction.find({
         $or: [{ from: userId }, { to: userId }],
     })
         .sort({ createdAt: -1 })
         .limit(limit)
-        .populate('from to', 'name mobile');
+        .populate('from to', 'name phoneNo role');
 });
 exports.TransactionService = {
     sendMoney,

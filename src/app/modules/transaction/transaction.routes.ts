@@ -1,7 +1,7 @@
 import express from 'express'
-import { TransactionController } from './transaction.controller'
-import auth from '../../middlewares/auth'
 import { ENUM_USER_ROLE } from '../../../enums/user'
+import auth from '../../middlewares/auth'
+import { TransactionController } from './transaction.controller'
 
 const router = express.Router()
 
@@ -23,6 +23,14 @@ router.post(
 )
 
 router.get('/', TransactionController.getHistory)
+
+router.get('/stats', TransactionController.getDashboardStats)
+
+router.get(
+  '/metrics',
+  auth(ENUM_USER_ROLE.ADMIN),
+  TransactionController.getSystemMetrics
+)
 
 // Admin
 router.get(

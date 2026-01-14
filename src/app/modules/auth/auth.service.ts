@@ -4,6 +4,7 @@ import { Secret } from 'jsonwebtoken'
 import config from '../../../config'
 import { ApiError } from '../../../errors/ApiErrors'
 import { jwtHelpers } from '../../../helper/jwtHelper'
+import { EmailService } from '../../../services/email.service'
 
 import { User } from '../user/user.model'
 import {
@@ -17,6 +18,14 @@ const register = async (data: any) => {
   if (data.role === 'agent') data.balance = 100000
 
   const result = await User.create(data)
+
+  // Send welcome email (don't block registration if email fails)
+  try {
+    await EmailService.sendWelcomeEmail(result.email, result.name, result.role)
+  } catch (error) {
+    console.error('Failed to send welcome email:', error)
+    // Continue with registration even if email fails
+  }
 
   // Validate JWT configuration before creating tokens
   if (!config.jwt.secret || !config.jwt.refresh_secret) {

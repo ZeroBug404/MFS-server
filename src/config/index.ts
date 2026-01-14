@@ -33,4 +33,13 @@ export default {
     expires_in: process.env.JWT_EXPIRES_IN || '30d',
     refresh_expires_in: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   },
+  email: {
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: process.env.EMAIL_PORT || '587',
+    secure: process.env.EMAIL_SECURE || 'false',
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+    from_name: process.env.EMAIL_FROM_NAME || 'AmarCash',
+    from_email: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+  },
 }

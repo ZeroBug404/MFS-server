@@ -46,7 +46,13 @@ const globalErrorHandler_1 = __importDefault(require("./errors/globalErrorHandle
 const dbConnect_1 = require("./utils/dbConnect");
 const app = (0, express_1.default)();
 exports.app = app;
-app.use((0, cors_1.default)());
+const corsOptions = {
+    origin: [
+        "http://localhost:8080",
+    ],
+    optionsSuccessStatus: 200,
+};
+app.use((0, cors_1.default)(corsOptions));
 // Set EJS as the view engine
 app.set('view engine', 'ejs');
 // Set the path to the views directory
@@ -61,7 +67,7 @@ app.use('/api/v1', routes_1.default);
 //Welcome route
 app.get('/', (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     res.json({
-        message: 'Welcome to the wallet waves',
+        message: 'Welcome to AmarCash',
     });
 }));
 // Error handling

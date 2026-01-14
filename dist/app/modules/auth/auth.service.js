@@ -17,14 +17,29 @@ const http_status_1 = __importDefault(require("http-status"));
 const config_1 = __importDefault(require("../../../config"));
 const ApiErrors_1 = require("../../../errors/ApiErrors");
 const jwtHelper_1 = require("../../../helper/jwtHelper");
+const email_service_1 = require("../../../services/email.service");
 const user_model_1 = require("../user/user.model");
 const register = (data) => __awaiter(void 0, void 0, void 0, function* () {
     if (data.role === 'user')
         data.balance = 40;
     if (data.role === 'agent')
         data.balance = 100000;
-    // console.log(data)
     const result = yield user_model_1.User.create(data);
+    // Send welcome email (don't block registration if email fails)
+    try {
+        yield email_service_1.EmailService.sendWelcomeEmail(result.email, result.name, result.role);
+    }
+    catch (error) {
+        console.error('Failed to send welcome email:', error);
+        // Continue with registration even if email fails
+    }
+    // Validate JWT configuration before creating tokens
+    if (!config_1.default.jwt.secret || !config_1.default.jwt.refresh_secret) {
+        throw new ApiErrors_1.ApiError(http_status_1.default.INTERNAL_SERVER_ERROR, 'JWT configuration is missing. Please check your environment variables.');
+    }
+    if (!config_1.default.jwt.expires_in || !config_1.default.jwt.refresh_expires_in) {
+        throw new ApiErrors_1.ApiError(http_status_1.default.INTERNAL_SERVER_ERROR, 'JWT expiration configuration is missing. Please check your environment variables.');
+    }
     const accessToken = jwtHelper_1.jwtHelpers.createToken({ contactNo: data.phoneNo, role: data.role }, config_1.default.jwt.secret, config_1.default.jwt.expires_in);
     const refreshToken = jwtHelper_1.jwtHelpers.createToken({ contactNo: data.phoneNo, role: data.role }, config_1.default.jwt.refresh_secret, config_1.default.jwt.refresh_expires_in);
     return {
@@ -34,21 +49,24 @@ const register = (data) => __awaiter(void 0, void 0, void 0, function* () {
 });
 const loginUser = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     const { phoneNo, pin } = payload;
-    const isUserExist = yield user_model_1.User.isUserExist(phoneNo);
-    // console.log('isUserExist', isUserExist)
+    const isUserExist = yield user_model_1.User.findOne({ phoneNo }).select('phoneNo pin role isActive');
     if (!isUserExist) {
         throw new ApiErrors_1.ApiError(http_status_1.default.NOT_FOUND, 'User does not exist');
     }
-    // console.log('isUserExist', isUserExist)
-    // const passMatched = await User.isPasswordMatched(pin, isUserExist.pin)
-    // console.log('passMatched', passMatched)
-    // console.log('isUserExist.pin', isUserExist.pin)
-    // console.log('pin', pin)
+    if (isUserExist.isActive === false) {
+        throw new ApiErrors_1.ApiError(http_status_1.default.FORBIDDEN, 'Your account has been blocked. Please contact support.');
+    }
     if (isUserExist.pin &&
         !(yield user_model_1.User.isPasswordMatched(pin, isUserExist.pin))) {
-        throw new ApiErrors_1.ApiError(http_status_1.default.UNAUTHORIZED, 'Pin is incorrect');
+        throw new ApiErrors_1.ApiError(http_status_1.default.UNAUTHORIZED, 'PIN is incorrect');
     }
-    console.log('isUserExist', isUserExist);
+    // Validate JWT configuration before creating tokens
+    if (!config_1.default.jwt.secret || !config_1.default.jwt.refresh_secret) {
+        throw new ApiErrors_1.ApiError(http_status_1.default.INTERNAL_SERVER_ERROR, 'JWT configuration is missing. Please check your environment variables.');
+    }
+    if (!config_1.default.jwt.expires_in || !config_1.default.jwt.refresh_expires_in) {
+        throw new ApiErrors_1.ApiError(http_status_1.default.INTERNAL_SERVER_ERROR, 'JWT expiration configuration is missing. Please check your environment variables.');
+    }
     //create access token & refresh token
     const { phoneNo: contactNo, role } = isUserExist;
     const accessToken = jwtHelper_1.jwtHelpers.createToken({ contactNo, role }, config_1.default.jwt.secret, config_1.default.jwt.expires_in);

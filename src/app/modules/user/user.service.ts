@@ -1,5 +1,6 @@
 import httpStatus from 'http-status'
 import { ApiError } from '../../../errors/ApiErrors'
+import { EmailService } from '../../../services/email.service'
 import { User } from './user.model'
 
 const getPendingAgents = async () => {
@@ -9,10 +10,18 @@ const getPendingAgents = async () => {
 const approveAgent = async (agentId: string) => {
   const agent = await User.findByIdAndUpdate(
     agentId,
-    { isApproved: true },
+    { $set: { isApproved: true } },
     { new: true }
   )
   if (!agent) throw new Error('Agent not found')
+
+  // Send approval email
+  try {
+    await EmailService.sendAgentApprovalEmail(agent.email, agent.name)
+  } catch (error) {
+    console.error('Failed to send agent approval email:', error)
+  }
+
   return agent
 }
 
@@ -44,13 +53,30 @@ const getAllUsers = async (search?: string) => {
 }
 
 const blockUser = async (userId: string) => {
-  const alreadyIsBlocked = await User.findById(userId).select('isActive')
+  const user = await User.findById(userId).select('isActive email name')
 
-  if (alreadyIsBlocked?.isActive === false) {
-    return User.findByIdAndUpdate(userId, { isActive: true }, { new: true })
+  if (!user) throw new ApiError(httpStatus.NOT_FOUND, 'User not found')
+
+  const newStatus = user.isActive === false
+
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { $set: { isActive: newStatus } },
+    { new: true }
+  )
+
+  // Send status change email
+  try {
+    await EmailService.sendAccountStatusEmail(
+      user.email,
+      user.name,
+      newStatus ? 'unblocked' : 'blocked'
+    )
+  } catch (error) {
+    console.error('Failed to send account status email:', error)
   }
 
-  return User.findByIdAndUpdate(userId, { isActive: false }, { new: true })
+  return updatedUser
 }
 
 const getMyProfile = async (phoneNo: string) => {
@@ -71,10 +97,14 @@ const updateMyProfile = async (
     throw new ApiError(httpStatus.BAD_REQUEST, 'No fields to update')
   }
 
-  const user = await User.findOneAndUpdate({ phoneNo }, updateData, {
-    new: true,
-    runValidators: true,
-  }).select('-pin')
+  const user = await User.findOneAndUpdate(
+    { phoneNo },
+    { $set: updateData },
+    {
+      new: true,
+      runValidators: true,
+    }
+  ).select('-pin')
 
   if (!user) throw new ApiError(httpStatus.NOT_FOUND, 'User not found')
   return user
@@ -93,6 +123,13 @@ const changePin = async (phoneNo: string, oldPin: string, newPin: string) => {
   // Update to new PIN
   user.pin = newPin
   await user.save()
+
+  // Send PIN change confirmation email
+  try {
+    await EmailService.sendPinChangeEmail(user.email, user.name)
+  } catch (error) {
+    console.error('Failed to send PIN change email:', error)
+  }
 
   return { success: true }
 }

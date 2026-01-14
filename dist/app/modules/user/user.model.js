@@ -14,8 +14,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.User = void 0;
 /* eslint-disable @typescript-eslint/no-this-alias */
-const mongoose_1 = require("mongoose");
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const mongoose_1 = require("mongoose");
 const config_1 = __importDefault(require("../../../config"));
 const UserSchema = new mongoose_1.Schema({
     name: {
@@ -83,9 +83,17 @@ UserSchema.statics.isPasswordMatched = function (givenPassword, savedPassword) {
 // User.create() / user.save()
 UserSchema.pre('save', function (next) {
     return __awaiter(this, void 0, void 0, function* () {
-        // hashing user password
+        // hashing user password only if it's modified
         const user = this;
-        user.pin = yield bcrypt_1.default.hash(user.pin, Number(config_1.default.bcrypt_salt_rounds));
+        // Only hash the PIN if it's been modified AND it's not already hashed
+        // bcrypt hashes start with $2a$, $2b$, or $2y$
+        if (user.isModified('pin') && !user.pin.startsWith('$2')) {
+            console.log('Hashing PIN for user:', user.phoneNo);
+            user.pin = yield bcrypt_1.default.hash(user.pin, Number(config_1.default.bcrypt_salt_rounds));
+        }
+        else if (user.isModified('pin')) {
+            console.log('PIN already hashed for user:', user.phoneNo, '- skipping hash');
+        }
         next();
     });
 });

@@ -79,9 +79,16 @@ UserSchema.statics.isPasswordMatched = async function (
 UserSchema.pre('save', async function (next) {
   // hashing user password only if it's modified
   const user = this
-  if (user.isModified('pin')) {
+
+  // Only hash the PIN if it's been modified AND it's not already hashed
+  // bcrypt hashes start with $2a$, $2b$, or $2y$
+  if (user.isModified('pin') && !user.pin.startsWith('$2')) {
+    console.log('Hashing PIN for user:', user.phoneNo)
     user.pin = await bcrypt.hash(user.pin, Number(config.bcrypt_salt_rounds))
+  } else if (user.isModified('pin')) {
+    console.log('PIN already hashed for user:', user.phoneNo, '- skipping hash')
   }
+
   next()
 })
 

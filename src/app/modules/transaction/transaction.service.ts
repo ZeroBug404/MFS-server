@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import mongoose from 'mongoose'
 import { v4 as uuidv4 } from 'uuid'
+import { EmailService } from '../../../services/email.service'
 import { Transaction } from '../transaction/transaction.model'
 import { User } from '../user/user.model'
 
@@ -24,13 +25,9 @@ const sendMoney = async (
     const fee = amount > 100 ? 5 : 0
     const totalDeduct = amount + fee
 
-    // Update balances
-    sender!.balance -= totalDeduct
-    recipient!.balance += amount
-
     // Update admin earnings
     const admin = await User.findOne({ role: 'admin' }).session(session)
-    admin!.balance += fee
+    if (!admin) throw new Error('Admin not found')
 
     // Create transaction
     const transaction = new Transaction({
@@ -43,14 +40,59 @@ const sendMoney = async (
       transactionId: uuidv4(),
     })
 
-    await Promise.all([
-      sender!.save(),
-      recipient!.save(),
-      admin!.save(),
-      transaction.save(),
+    const [updatedSender, updatedRecipient] = await Promise.all([
+      User.findByIdAndUpdate(
+        senderId,
+        { $inc: { balance: -totalDeduct } },
+        { session, new: true }
+      ),
+      User.findByIdAndUpdate(
+        recipient!._id,
+        { $inc: { balance: amount } },
+        { session, new: true }
+      ),
+      User.findByIdAndUpdate(
+        admin._id,
+        { $inc: { balance: fee } },
+        { session, new: true }
+      ),
+      transaction.save({ session }),
     ])
 
     await session.commitTransaction()
+
+    // Send email notifications (don't block if email fails)
+    try {
+      const currentDate = new Date().toLocaleString()
+
+      // Email to sender
+      await EmailService.sendTransactionEmail(sender!.email, sender!.name, {
+        type: 'send',
+        amount,
+        recipientName: recipient!.name,
+        fee,
+        newBalance: updatedSender!.balance,
+        transactionId: transaction.transactionId,
+        date: currentDate,
+      })
+
+      // Email to recipient
+      await EmailService.sendTransactionEmail(
+        recipient!.email,
+        recipient!.name,
+        {
+          type: 'receive',
+          amount,
+          senderName: sender!.name,
+          newBalance: updatedRecipient!.balance,
+          transactionId: transaction.transactionId,
+          date: currentDate,
+        }
+      )
+    } catch (error) {
+      console.error('Failed to send transaction emails:', error)
+    }
+
     return transaction
   } catch (error) {
     await session.abortTransaction()
@@ -71,10 +113,6 @@ const cashIn = async (agentId: string, userPhone: string, amount: number) => {
     if (!agent || !user) throw new Error('Invalid agent or user')
     if (agent.balance < amount) throw new Error('Agent insufficient balance')
 
-    // Update balances
-    agent.balance -= amount
-    user.balance += amount
-
     // Create transaction
     const transaction = new Transaction({
       from: agentId,
@@ -86,7 +124,19 @@ const cashIn = async (agentId: string, userPhone: string, amount: number) => {
       transactionId: uuidv4(),
     })
 
-    await Promise.all([agent.save(), user.save(), transaction.save()])
+    await Promise.all([
+      User.findByIdAndUpdate(
+        agentId,
+        { $inc: { balance: -amount } },
+        { session, new: true }
+      ),
+      User.findByIdAndUpdate(
+        user._id,
+        { $inc: { balance: amount } },
+        { session, new: true }
+      ),
+      transaction.save({ session }),
+    ])
 
     await session.commitTransaction()
     return transaction
@@ -111,8 +161,6 @@ const agentCashIn = async (
 
     if (!user) throw new Error('Invalid agent or user')
 
-    user.balance += amount
-
     // Create transaction
     const transaction = new Transaction({
       from: adminId,
@@ -124,7 +172,14 @@ const agentCashIn = async (
       transactionId: uuidv4(),
     })
 
-    await Promise.all([user.save(), transaction.save()])
+    await Promise.all([
+      User.findByIdAndUpdate(
+        user._id,
+        { $inc: { balance: amount } },
+        { session, new: true }
+      ),
+      transaction.save({ session }),
+    ])
 
     await session.commitTransaction()
     return transaction
@@ -160,15 +215,13 @@ const cashOut = async (userId: string, agentPhone: string, amount: number) => {
 
     if (user.balance < totalDeduct) throw new Error('Insufficient balance')
 
-    // Update balances
-    user.balance -= totalDeduct
-    agent.balance += amount - amount * 0.01 // Agent keeps 99%
-    agent.income = (agent.income || 0) + amount * 0.01 // Agent earns 1%
-
     // Update admin
     const admin = await User.findOne({ role: 'admin' }).session(session)
     if (!admin) throw new Error('Admin not found')
-    admin.balance += amount * 0.005 + 5 // 0.5% + fixed 5 Taka
+
+    const agentAmount = amount - amount * 0.01 // Agent keeps 99%
+    const agentIncome = amount * 0.01 // Agent earns 1%
+    const adminEarnings = amount * 0.005 + 5 // 0.5% + fixed 5 Taka
 
     // Create transaction
     const transaction = new Transaction({
@@ -176,16 +229,28 @@ const cashOut = async (userId: string, agentPhone: string, amount: number) => {
       to: agent._id,
       amount,
       fee,
-      adminEarnings: amount * 0.005 + 5,
+      adminEarnings,
       type: 'cash-out',
       transactionId: uuidv4(),
     })
 
     await Promise.all([
-      user.save(),
-      agent.save(),
-      admin.save(),
-      transaction.save(),
+      User.findByIdAndUpdate(
+        userId,
+        { $inc: { balance: -totalDeduct } },
+        { session, new: true }
+      ),
+      User.findByIdAndUpdate(
+        agent._id,
+        { $inc: { balance: agentAmount, income: agentIncome } },
+        { session, new: true }
+      ),
+      User.findByIdAndUpdate(
+        admin._id,
+        { $inc: { balance: adminEarnings } },
+        { session, new: true }
+      ),
+      transaction.save({ session }),
     ])
 
     await session.commitTransaction()
