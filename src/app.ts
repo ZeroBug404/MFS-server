@@ -13,6 +13,8 @@ const app: Application = express()
 const corsOptions = {
   origin: [
     "http://localhost:8080",
+    "https://wallet-waves.vercel.app",
+    "https://amar-cash.vercel.app"
   ],
   optionsSuccessStatus: 200,
 };
