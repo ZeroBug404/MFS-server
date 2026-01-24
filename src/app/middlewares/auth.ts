@@ -2,8 +2,8 @@
 import { NextFunction, Request, Response } from 'express';
 import httpStatus from 'http-status';
 import { Secret } from 'jsonwebtoken';
-import { ApiError } from '../../errors/ApiErrors';
 import config from '../../config';
+import { ApiError } from '../../errors/ApiErrors';
 import { jwtHelpers } from '../../helper/jwtHelper';
 
 
@@ -22,8 +22,16 @@ const auth =
       // Verify Token
       verifiedUser = jwtHelpers.verifyToken(token, config.jwt.secret as Secret);
 
-      console.log(verifiedUser);
+      // console.log(verifiedUser);
       
+      // Handle legacy tokens without userId
+      if (!verifiedUser.userId && verifiedUser.contactNo) {
+        const { User } = await import('../modules/user/user.model');
+        const user = await User.findOne({ phoneNo: verifiedUser.contactNo });
+        if (user) {
+          verifiedUser.userId = user._id;
+        }
+      }
 
       req.user = verifiedUser;
 

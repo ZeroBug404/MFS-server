@@ -36,7 +36,12 @@ const getBalance = async (data: any) => {
     return totalSystemBalance[0]
   }
 
-  return user?.balance
+  // Return structure consistent with frontend expectations
+  return {
+    total: user?.balance,
+    availableBalance: user?.balance,
+    income: user?.income
+  }
 }
 
 const getAllUsers = async (search?: string) => {

@@ -22,6 +22,12 @@ router.post(
   TransactionController.cashOut
 )
 
+router.get(
+  '/statement',
+  auth(ENUM_USER_ROLE.USER, ENUM_USER_ROLE.AGENT),
+  TransactionController.downloadStatement
+);
+
 router.get('/', TransactionController.getHistory)
 
 router.get('/stats', TransactionController.getDashboardStats)

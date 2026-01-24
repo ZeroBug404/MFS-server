@@ -8,9 +8,9 @@ import { EmailService } from '../../../services/email.service'
 
 import { User } from '../user/user.model'
 import {
-  ILoginUser,
-  ILoginUserResponse,
-  IRefreshTokenResponse,
+    ILoginUser,
+    ILoginUserResponse,
+    IRefreshTokenResponse,
 } from './auth.interface'
 
 const register = async (data: any) => {
@@ -43,13 +43,13 @@ const register = async (data: any) => {
   }
 
   const accessToken = jwtHelpers.createToken(
-    { contactNo: data.phoneNo, role: data.role },
+    { userId: result._id, contactNo: data.phoneNo, role: data.role },
     config.jwt.secret as Secret,
     config.jwt.expires_in as string
   )
 
   const refreshToken = jwtHelpers.createToken(
-    { contactNo: data.phoneNo, role: data.role },
+    { userId: result._id, contactNo: data.phoneNo, role: data.role },
     config.jwt.refresh_secret as Secret,
     config.jwt.refresh_expires_in as string
   )
@@ -64,7 +64,7 @@ const loginUser = async (payload: ILoginUser): Promise<ILoginUserResponse> => {
   const { phoneNo, pin } = payload
 
   const isUserExist = await User.findOne({ phoneNo }).select(
-    'phoneNo pin role isActive'
+    '_id phoneNo pin role isActive'
   )
 
   if (!isUserExist) {
@@ -101,15 +101,15 @@ const loginUser = async (payload: ILoginUser): Promise<ILoginUserResponse> => {
   }
 
   //create access token & refresh token
-  const { phoneNo: contactNo, role } = isUserExist
+  const { phoneNo: contactNo, role, _id: userId } = isUserExist
   const accessToken = jwtHelpers.createToken(
-    { contactNo, role },
+    { userId, contactNo, role },
     config.jwt.secret as Secret,
     config.jwt.expires_in as string
   )
 
   const refreshToken = jwtHelpers.createToken(
-    { contactNo, role },
+    { userId, contactNo, role },
     config.jwt.refresh_secret as Secret,
     config.jwt.refresh_expires_in as string
   )

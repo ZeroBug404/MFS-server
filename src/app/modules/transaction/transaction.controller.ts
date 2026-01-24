@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 
 import httpStatus from 'http-status'
+import PDFDocument from 'pdfkit-table'
 import catchAsync from '../../../shared/catchAsync'
 import sendResponse from '../../../utils/responseHandler'
 import { Transaction } from './transaction.model'
@@ -132,6 +133,74 @@ const getSystemMetrics = catchAsync(async (req: Request, res: Response) => {
   })
 })
 
+const downloadStatement = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req.user as any)?.userId;
+  const { startDate, endDate, type } = req.query;
+
+  if (!startDate || !endDate) {
+    throw new Error('Start date and end date are required');
+  }
+
+  const transactions = await TransactionService.getStatement(
+    userId,
+    startDate as string,
+    endDate as string
+  );
+
+  const doc = new PDFDocument({ margin: 30, size: 'A4' });
+
+  // Set response headers
+  res.setHeader('Content-Type', 'application/pdf');
+  
+  const disposition = type === 'view' ? 'inline' : 'attachment';
+  res.setHeader(
+    'Content-Disposition',
+    `${disposition}; filename=statement-${startDate}-${endDate}.pdf`
+  );
+
+  doc.pipe(res);
+
+  // Add content to PDF
+  doc.fontSize(20).text('Transaction Statement', { align: 'center' });
+  doc.moveDown();
+  doc.fontSize(12).text(`Period: ${startDate} to ${endDate}`, { align: 'center' });
+  doc.moveDown();
+
+  const table = {
+    title: 'Statement Details',
+    headers: [
+      'Date',
+      'TrxID',
+      'Type',
+      'Amount',
+      'Fee',
+      'Counterparty'
+    ],
+    rows: transactions.map((t: any) => {
+        const isSender = t.from._id.toString() === userId;
+        const type = t.type;
+        const counterparty = isSender ? t.to?.phoneNo : t.from?.phoneNo;
+        
+        return [
+            new Date(t.createdAt).toLocaleDateString(),
+            t.transactionId,
+            type,
+            t.amount.toString(),
+            t.fee.toString(),
+            counterparty || 'N/A'
+        ]
+    }),
+  };
+
+  // @ts-ignore
+  await doc.table(table, {
+    prepareHeader: () => doc.font('Helvetica-Bold').fontSize(10),
+    prepareRow: () => doc.font('Helvetica').fontSize(10),
+  });
+
+  doc.end();
+});
+
 export const TransactionController = {
   sendMoney,
   cashIn,
@@ -141,4 +210,5 @@ export const TransactionController = {
   adminGetTransactions,
   getDashboardStats,
   getSystemMetrics,
+  downloadStatement,
 }

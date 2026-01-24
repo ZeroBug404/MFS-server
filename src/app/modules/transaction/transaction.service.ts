@@ -160,6 +160,7 @@ const agentCashIn = async (
     const user = await User.findOne({ phoneNo: userPhone }).session(session)
 
     if (!user) throw new Error('Invalid agent or user')
+    if (user.role !== 'agent') throw new Error('Cash In to an Agent only')
 
     // Create transaction
     const transaction = new Transaction({
@@ -219,9 +220,9 @@ const cashOut = async (userId: string, agentPhone: string, amount: number) => {
     const admin = await User.findOne({ role: 'admin' }).session(session)
     if (!admin) throw new Error('Admin not found')
 
-    const agentAmount = amount - amount * 0.01 // Agent keeps 99%
     const agentIncome = amount * 0.01 // Agent earns 1%
-    const adminEarnings = amount * 0.005 + 5 // 0.5% + fixed 5 Taka
+    const agentAmount = amount + agentIncome // Agent gets Principal + Commission
+    const adminEarnings = fee - agentIncome // Admin gets breakdown (0.5%)
 
     // Create transaction
     const transaction = new Transaction({
@@ -247,7 +248,7 @@ const cashOut = async (userId: string, agentPhone: string, amount: number) => {
       ),
       User.findByIdAndUpdate(
         admin._id,
-        { $inc: { balance: adminEarnings } },
+        { $inc: { balance: adminEarnings, income: adminEarnings } }, // Admin income also updated clearly
         { session, new: true }
       ),
       transaction.save({ session }),
@@ -278,10 +279,26 @@ const getTransactions = async (data: any, limit = 100) => {
     .populate('from to', 'name phoneNo role')
 }
 
+const getStatement = async (userId: string,  startDate: string, endDate: string) => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+
+  return Transaction.find({
+    $and: [
+      { $or: [{ from: userId }, { to: userId }] },
+      { createdAt: { $gte: start, $lte: end } }
+    ]
+  })
+    .sort({ createdAt: 1 }) // Sorted by date ascending for statement
+    .populate('from to', 'name phoneNo role');
+}
+
 export const TransactionService = {
   sendMoney,
   cashIn,
   agentCashIn,
   cashOut,
   getTransactions,
+  getStatement,
 }

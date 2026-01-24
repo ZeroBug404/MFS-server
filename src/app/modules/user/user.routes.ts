@@ -5,7 +5,11 @@ import { UserController } from './user.controller'
 
 const router = express.Router()
 
-router.get('/balance', auth(ENUM_USER_ROLE.ADMIN), UserController.getBalance)
+router.get(
+  '/balance',
+  auth(ENUM_USER_ROLE.ADMIN, ENUM_USER_ROLE.USER, ENUM_USER_ROLE.AGENT),
+  UserController.getBalance
+)
 
 router.get('/manage', UserController.manageUsers)
 
